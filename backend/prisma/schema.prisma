@@ -1,0 +1,81 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  password      String
+  role          Role           @default(USER)
+  createdAt     DateTime       @default(now())
+  jobs          Job[]
+  recurringJobs RecurringJob[]
+}
+
+enum JobType {
+  REPORT
+  EMAIL_BATCH
+  DATA_EXPORT
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum LogStatus {
+  SUCCESS
+  FAILED
+}
+
+model Job {
+  id         String    @id @default(uuid())
+  type       JobType
+  status     JobStatus @default(PENDING)
+  payload    Json
+  retryCount Int       @default(0)
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logs       JobLog[]
+  result     Json?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model JobLog {
+  id           String    @id @default(uuid())
+  jobId        String
+  job          Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  attempt      Int
+  status       LogStatus
+  errorMessage String?
+  createdAt    DateTime  @default(now())
+}
+
+model RecurringJob {
+  id          String   @id @default(uuid())
+  cron        String
+  type        JobType
+  payload     Json
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}
